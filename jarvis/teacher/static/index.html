@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JARVIS Classroom</title>
+<style>
+  :root { --bg:#070c16; --panel:#0f1a2d; --panel2:#132038; --line:#1f3050; --text:#eef3fa; --muted:#93a3bd; --accent:#35c8ff; --ok:#3ddc97; --bad:#ff6b6b; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:radial-gradient(1200px 700px at 20% -10%, #10233f 0%, var(--bg) 60%); color:var(--text);
+    font:16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; overflow:hidden; }
+  #app { display:grid; grid-template-rows:auto minmax(0,1fr) auto auto; height:100vh; max-width:1500px; margin:0 auto; padding:14px 22px; gap:12px; }
+  header { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:14px; }
+  .logo { width:26px; height:26px; border-radius:50%; border:2px solid var(--accent); box-shadow:0 0 14px var(--accent) inset, 0 0 10px #35c8ff66; }
+  header b { color:var(--text); letter-spacing:.08em; }
+  #lectureTitle { margin-left:auto; max-width:60%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #stageWrap { position:relative; display:flex; gap:16px; min-height:0; overflow:hidden; justify-content:center; }
+  #stage { flex:0 1 auto; aspect-ratio:16/9; align-self:center; margin:0 auto; width:min(100%, calc((100vh - 250px) * 16 / 9)); background:linear-gradient(160deg,#0d1729,#0a1222);
+    border:1px solid var(--line); border-radius:18px; padding:4.5% 5%; position:relative; overflow:hidden; box-shadow:0 20px 60px #0008; }
+  #stage h1 { font-size:clamp(22px,3.1vw,48px); margin:0 0 .25em; line-height:1.15; }
+  #stage .bar { width:90px; height:5px; background:var(--accent); border-radius:3px; margin:.6em 0 1.4em; box-shadow:0 0 12px var(--accent); }
+  #stage.title h1 { font-size:clamp(28px,4.2vw,68px); margin-top:9%; }
+  #stage .subtitle { color:var(--muted); font-size:clamp(16px,1.8vw,28px); }
+  .content { display:flex; gap:4%; height:78%; }
+  ul.bullets { list-style:none; padding:0; margin:0; flex:1.35; }
+  ul.bullets li { font-size:clamp(15px,1.75vw,28px); margin:0 0 .75em; padding-left:1.3em; position:relative; opacity:0; transform:translateY(8px); transition:all .5s ease; }
+  ul.bullets li.on { opacity:1; transform:none; }
+  ul.bullets li::before { content:""; position:absolute; left:0; top:.55em; width:.5em; height:.5em; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  .imgbox { flex:1; display:flex; align-items:center; justify-content:center; }
+  .imgbox img { max-width:100%; max-height:100%; border-radius:12px; border:1px solid var(--line); }
+  #slideNo { position:absolute; right:22px; bottom:14px; color:var(--muted); font-size:13px; }
+  #panel { width:0; overflow:hidden; transition:width .35s ease; background:var(--panel); border:1px solid var(--line); border-radius:18px; display:flex; flex-direction:column; }
+  #panel.open { width:min(430px,38vw); flex-shrink:0; padding:18px; }
+  #panel h3 { margin:0 0 8px; font-size:15px; color:var(--accent); letter-spacing:.06em; text-transform:uppercase; }
+  #qaLog { flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding-right:4px; }
+  .q { align-self:flex-end; background:#1b3558; padding:9px 12px; border-radius:12px 12px 2px 12px; max-width:90%; }
+  .a { background:var(--panel2); padding:10px 12px; border-radius:12px 12px 12px 2px; border:1px solid var(--line); }
+  .board { margin-top:8px; padding:10px 12px; background:#0a1a14; border:1px dashed #2e6b53; border-radius:10px; font-family:"SF Mono",Menlo,monospace; font-size:14px; color:#bff5dc; }
+  .board div::before { content:"✎ "; color:var(--ok); }
+  #askStatus { color:var(--muted); font-size:14px; min-height:22px; margin:10px 0 6px; }
+  .dot { display:inline-block; margin-right:6px; width:10px; height:10px; border-radius:50%; background:var(--bad); animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.25; } }
+  #askRow { display:flex; gap:8px; }
+  #askText { flex:1; background:#0a1324; border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px 12px; font:inherit; }
+  #caption { min-height:48px; color:#cfd9e8; background:#0b1427cc; border:1px solid var(--line); border-radius:12px; padding:10px 16px; font-size:15px; max-height:88px; overflow:auto; }
+  #caption.hidden { display:none; }
+  #controls { display:flex; align-items:center; gap:10px; }
+  button { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:9px 14px; font:inherit; font-size:14px; cursor:pointer; transition:all .15s; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#04111f; border-color:var(--accent); font-weight:600; }
+  button.hand { background:#2a1f05; border-color:#8a6a12; color:#ffd66b; font-weight:600; }
+  button.hand.rec { background:var(--bad); color:white; border-color:var(--bad); }
+  #progress { flex:1; display:flex; gap:4px; }
+  #progress span { flex:1; height:6px; border-radius:3px; background:var(--line); cursor:pointer; }
+  #progress span.done { background:#2786ad; } #progress span.cur { background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  select { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:8px; }
+  #overlay { position:fixed; inset:0; background:#050a13ee; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:9; text-align:center; padding:20px; }
+  #overlay h2 { font-size:clamp(24px,3vw,42px); margin:0; max-width:900px; }
+  #overlay p { color:var(--muted); max-width:620px; }
+  .quiz { margin-top:6px; display:grid; gap:10px; }
+  .quiz .qq { font-size:clamp(14px,1.3vw,20px); font-weight:600; }
+  .quiz .opts { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .quiz .opts button { font-size:clamp(12px,1.1vw,16px); }
+  .quiz .opts button.right { background:var(--ok); color:#032; border-color:var(--ok); }
+  .quiz .opts button.wrong { background:var(--bad); border-color:var(--bad); }
+  kbd { background:#1a2740; border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:12px; }
+  #hint { color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<div id="overlay">
+  <div class="logo" style="width:70px;height:70px"></div>
+  <h2 id="ovTitle">Loading lesson…</h2>
+  <p>Your lesson will be narrated. Raise your hand any time with <kbd>Q</kbd> or the ✋ button and just ask out loud — or type your question.</p>
+  <button class="primary" id="startBtn" disabled>▶ Begin lesson</button>
+</div>
+
+<div id="app">
+  <header><div class="logo"></div><b>JARVIS</b> CLASSROOM <span id="lectureTitle"></span></header>
+  <div id="stageWrap">
+    <div id="stage"></div>
+    <aside id="panel" class="open">
+      <h3>✋ Questions</h3>
+      <div id="qaLog"></div>
+      <div id="askStatus"></div>
+      <div id="askRow">
+        <input id="askText" placeholder="Type a question, or press ✋ and speak…">
+        <button id="sendBtn">Ask</button>
+      </div>
+    </aside>
+  </div>
+  <div id="caption"></div>
+  <div id="controls">
+    <button id="prevBtn" title="Previous (←)">◀</button>
+    <button id="playBtn" class="primary" title="Play/Pause (Space)">❚❚</button>
+    <button id="nextBtn" title="Next (→)">▶</button>
+    <button id="handBtn" class="hand" title="Ask a question (Q)">✋ Raise hand</button>
+    <div id="progress"></div>
+    <select id="speed" title="Speed"><option value="1">1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option><option value="1.5">1.5×</option></select>
+    <button id="ccBtn" title="Captions (C)">CC</button>
+    <button id="videoBtn" title="Export as MP4 video">🎬 Video</button>
+  </div>
+</div>
+<audio id="narr" preload="auto"></audio>
+<audio id="ans"></audio>
+
+<script>
+const $ = s => document.querySelector(s);
+const narr = $("#narr"), ans = $("#ans"), stage = $("#stage");
+let spec, seq = [], idx = 0, asking = false, resumeTimer = null, rec = null, stream = null, wasPlaying = false;
+
+function esc(s){ const d=document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+
+fetch("/api/lecture").then(r => r.json()).then(s => {
+  spec = s;
+  document.title = "JARVIS · " + s.title;
+  $("#lectureTitle").textContent = s.title;
+  $("#ovTitle").textContent = s.title;
+  seq = [{kind:"title", title:s.title, subtitle:s.subtitle||"", audio:s.intro_audio, notes:s.intro_notes}]
+    .concat(s.slides.map(x => ({kind:"content", ...x})))
+    .concat([{kind:"end", title:"Recap & quick check", bullets:s.slides.map(x=>x.title), audio:s.outro_audio, notes:s.outro_notes, quiz:s.quiz||[]}]);
+  $("#progress").innerHTML = seq.map((_,i)=>`<span data-i="${i}"></span>`).join("");
+  $("#progress").onclick = e => { if (e.target.dataset.i) go(+e.target.dataset.i); };
+  $("#startBtn").disabled = false;
+});
+
+$("#startBtn").onclick = () => { $("#overlay").style.display = "none"; go(0); };
+
+function render(){
+  const s = seq[idx];
+  stage.className = s.kind === "title" ? "title" : "";
+  if (s.kind === "title") {
+    stage.innerHTML = `<h1>${esc(s.title)}</h1><div class="bar"></div><div class="subtitle">${esc(s.subtitle)}</div>`;
+  } else {
+    const quiz = s.kind === "end" && s.quiz.length ? `<div class="quiz">${s.quiz.map((q,qi)=>`
+        <div><div class="qq">${qi+1}. ${esc(q.question)}</div><div class="opts">${(q.options||[]).map((o,oi)=>
+        `<button data-q="${qi}" data-o="${oi}">${esc(o)}</button>`).join("")}</div></div>`).join("")}</div>` : "";
+    const img = s.image ? `<div class="imgbox"><img src="/media/${s.image}" alt=""></div>` : "";
+    const bullets = s.kind === "end" && quiz ? "" : `<ul class="bullets">${s.bullets.map(b=>`<li>${esc(b)}</li>`).join("")}</ul>`;
+    stage.innerHTML = `<h1>${esc(s.title)}</h1><div class="bar"></div><div class="content">${bullets}${img}${quiz ? `<div style="flex:1">${quiz}</div>` : ""}</div>`;
+    stage.querySelectorAll(".quiz button").forEach(b => b.onclick = () => {
+      const q = s.quiz[+b.dataset.q], right = +b.dataset.o === +q.answer;
+      b.classList.add(right ? "right" : "wrong");
+      if (!right) b.parentElement.children[+q.answer]?.classList.add("right");
+      b.parentElement.querySelectorAll("button").forEach(x => x.disabled = true);
+    });
+  }
+  stage.insertAdjacentHTML("beforeend", `<div id="slideNo">${idx+1} / ${seq.length}</div>`);
+  $("#caption").textContent = s.notes || "";
+  document.querySelectorAll("#progress span").forEach((el,i)=>{ el.className = i<idx ? "done" : i===idx ? "cur" : ""; });
+}
+
+function go(i){
+  if (i < 0 || i >= seq.length) return;
+  clearTimeout(resumeTimer);
+  idx = i; render();
+  const s = seq[idx];
+  if (s.audio) { narr.src = "/media/" + s.audio; narr.playbackRate = +$("#speed").value; if (!asking) narr.play().catch(()=>{}); }
+  revealBullets(0);
+}
+
+function revealBullets(frac){
+  const lis = stage.querySelectorAll("ul.bullets li");
+  const n = lis.length, show = Math.min(n, 1 + Math.floor(frac * (n + 0.5)));
+  lis.forEach((li,k)=> li.classList.toggle("on", k < show));
+}
+narr.ontimeupdate = () => { if (narr.duration) revealBullets(narr.currentTime / narr.duration); };
+narr.onplay = () => $("#playBtn").textContent = "❚❚";
+narr.onpause = () => $("#playBtn").textContent = "▶";
+narr.onended = () => { revealBullets(1); if (!asking && idx < seq.length - 1) setTimeout(()=>{ if (!asking && narr.ended) go(idx+1); }, 900); };
+
+$("#playBtn").onclick = () => { if (asking) return resume(); narr.paused ? narr.play() : narr.pause(); };
+$("#prevBtn").onclick = () => go(idx-1);
+$("#nextBtn").onclick = () => go(idx+1);
+$("#speed").onchange = () => narr.playbackRate = +$("#speed").value;
+$("#ccBtn").onclick = () => $("#caption").classList.toggle("hidden");
+
+// ------------------------------------------------------------------ asking questions
+function openPanel(){ $("#panel").classList.add("open"); }
+function status(html){ $("#askStatus").innerHTML = html; }
+
+async function raiseHand(){
+  if (rec) { stopRec(); return; }
+  clearTimeout(resumeTimer);
+  asking = true; wasPlaying = wasPlaying || !narr.paused; narr.pause(); ans.pause(); openPanel();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({audio:true});
+  } catch(e) { status("Microphone blocked — type your question instead."); $("#askText").focus(); return; }
+  const chunks = [];
+  rec = new MediaRecorder(stream);
+  rec.ondataavailable = e => chunks.push(e.data);
+  rec.onstop = () => { stream.getTracks().forEach(t=>t.stop()); stream = null; rec = null; $("#handBtn").classList.remove("rec"); $("#handBtn").textContent = "✋ Raise hand";
+    const blob = new Blob(chunks, {type: chunks[0]?.type || "audio/webm"});
+    if (blob.size > 2000) send(null, blob); else status("I didn't hear anything — try again or type."); };
+  rec.start();
+  $("#handBtn").classList.add("rec"); $("#handBtn").textContent = "■ Done";
+  status(`<span class="dot"></span> Listening… ask your question (stops when you pause)`);
+  // auto-stop after ~1.6s of silence once speech has started
+  const ctx = new AudioContext(), an = ctx.createAnalyser(); ctx.createMediaStreamSource(stream).connect(an);
+  const buf = new Float32Array(an.fftSize); let spoke = false, quietSince = 0, t0 = performance.now();
+  (function loop(){
+    if (!rec) { ctx.close(); return; }
+    an.getFloatTimeDomainData(buf); const rms = Math.sqrt(buf.reduce((a,b)=>a+b*b,0)/buf.length);
+    const now = performance.now();
+    if (rms > 0.02) { spoke = true; quietSince = 0; } else if (spoke && !quietSince) quietSince = now;
+    if ((spoke && quietSince && now - quietSince > 1600) || now - t0 > 30000 || (!spoke && now - t0 > 9000)) { stopRec(); ctx.close(); return; }
+    requestAnimationFrame(loop);
+  })();
+}
+function stopRec(){ if (rec && rec.state !== "inactive") rec.stop(); }
+
+async function send(text, blob){
+  asking = true; wasPlaying = wasPlaying || !narr.paused; narr.pause(); openPanel();
+  const fd = new FormData(); fd.append("slide", idx);
+  if (text) fd.append("text", text); if (blob) fd.append("audio", blob, "q.webm");
+  status("🤔 Thinking…");
+  if (text) $("#qaLog").insertAdjacentHTML("beforeend", `<div class="q">${esc(text)}</div>`);
+  try {
+    const r = await fetch("/api/ask", {method:"POST", body:fd}); const d = await r.json();
+    if (d.error) { status(esc(d.error)); return; }
+    if (!text) $("#qaLog").insertAdjacentHTML("beforeend", `<div class="q">${esc(d.question)}</div>`);
+    const board = d.board?.length ? `<div class="board">${d.board.map(b=>`<div>${esc(b)}</div>`).join("")}</div>` : "";
+    $("#qaLog").insertAdjacentHTML("beforeend", `<div class="a">${esc(d.answer)}${board}</div>`);
+    $("#qaLog").scrollTop = 1e9;
+    status("🔊 Answering… (✋ to follow up)");
+    ans.src = "/media/" + d.audio; ans.playbackRate = +$("#speed").value; ans.play();
+  } catch(e) { status("Something went wrong: " + esc(e.message)); }
+}
+ans.onended = () => {
+  let n = 6; status(`Resuming the lesson in <b id="cd">${n}</b>s — <a href="#" id="resumeNow" style="color:var(--accent)">resume now</a> · ✋ to ask a follow-up`);
+  $("#resumeNow").onclick = e => { e.preventDefault(); resume(); };
+  const tick = () => { n--; const el = $("#cd"); if (el) el.textContent = n; if (n <= 0) resume(); else resumeTimer = setTimeout(tick, 1000); };
+  resumeTimer = setTimeout(tick, 1000);
+};
+function resume(){
+  clearTimeout(resumeTimer); ans.pause(); asking = false; status("");
+  if (wasPlaying || narr.currentTime > 0) { if (narr.ended) go(idx+1); else narr.play(); }
+  wasPlaying = false;
+}
+$("#handBtn").onclick = raiseHand;
+$("#sendBtn").onclick = () => { const t = $("#askText").value.trim(); if (t) { $("#askText").value = ""; clearTimeout(resumeTimer); send(t); } };
+$("#askText").onkeydown = e => { if (e.key === "Enter") $("#sendBtn").click(); };
+$("#askText").onfocus = () => { clearTimeout(resumeTimer); if (!narr.paused) { wasPlaying = true; asking = true; narr.pause(); } };
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.key === " ") { e.preventDefault(); $("#playBtn").click(); }
+  else if (e.key === "ArrowRight") go(idx+1);
+  else if (e.key === "ArrowLeft") go(idx-1);
+  else if (e.key.toLowerCase() === "q") raiseHand();
+  else if (e.key.toLowerCase() === "c") $("#ccBtn").click();
+  else if (e.key === "Escape") $("#panel").classList.remove("open");
+});
+
+// ------------------------------------------------------------------ video export + heartbeat
+$("#videoBtn").onclick = async () => {
+  $("#videoBtn").disabled = true; $("#videoBtn").textContent = "🎬 Rendering…";
+  await fetch("/api/video", {method:"POST"});
+  const poll = async () => {
+    const d = await (await fetch("/api/video")).json();
+    if (d.status === "working") return setTimeout(poll, 2000);
+    $("#videoBtn").disabled = false;
+    if (d.status === "done") { $("#videoBtn").textContent = "📂 Show video"; $("#videoBtn").onclick = () => fetch("/api/reveal", {method:"POST"}); }
+    else { $("#videoBtn").textContent = "🎬 Video"; alertBox("Video export failed: " + d.error); }
+  };
+  poll();
+};
+function alertBox(msg){ openPanel(); status(esc(msg)); }
+setInterval(() => fetch("/api/heartbeat", {method:"POST", headers:{"Content-Type":"application/json"},
+  body: JSON.stringify({playing: !narr.paused || !ans.paused})}).catch(()=>{}), 4000);
+</script>
+</body>
+</html>
