@@ -166,7 +166,7 @@ def files():
     items = []
     for p in config.OUTPUT_DIR.rglob("*"):
         if p.is_file() and p.suffix.lower() in OPENABLE and "video_parts" not in p.parts and "audio" not in p.parts \
-                and "images" not in p.parts and "qa" not in p.parts and p.name not in ("lecture.json", "spec.json"):
+                and "images" not in p.parts and "qa" not in p.parts and p.name not in ("lecture.json", "spec.json", "questions.json"):
             items.append(p)
     items.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return jsonify([{"name": p.name, "path": str(p), "mtime": p.stat().st_mtime, "ext": p.suffix.lower()[1:]} for p in items[:14]])

@@ -265,10 +265,11 @@ function tick(){
 setInterval(tick, 1000); tick();
 
 /* ------------------------------------------------ gauges */
-function gauge(el, pct, txt){
+function gauge(el, pct, txt, lowIsBad=false){
   pct = Math.max(0, Math.min(100, pct||0));
   const r = 40, c = 2*Math.PI*r, arc = c*0.75, on = arc*pct/100;
-  const col = pct > 85 ? "var(--red)" : pct > 65 ? "var(--amber)" : "var(--cyan)";
+  const bad = lowIsBad ? 100 - pct : pct;
+  const col = bad > 85 ? "var(--red)" : bad > 65 ? "var(--amber)" : "var(--cyan)";
   let ticks = "";
   for (let i=0;i<=30;i++){ const a = (135 + i*9) * Math.PI/180, r1 = 47, r2 = i%5 ? 45 : 43;
     ticks += `<line x1="${50+r1*Math.cos(a)}" y1="${50+r1*Math.sin(a)}" x2="${50+r2*Math.cos(a)}" y2="${50+r2*Math.sin(a)}" stroke="rgba(64,200,255,.35)" stroke-width="1"/>`; }
@@ -284,7 +285,7 @@ async function pollStatus(){
   try{
     const d = await (await fetch("/api/status")).json();
     gauge($("#gCpu"), d.cpu); gauge($("#gMem"), d.mem); gauge($("#gDisk"), d.disk);
-    if (d.battery != null){ gauge($("#gBat"), d.battery); $("#batLbl").textContent = d.plugged ? "POWER · AC" : "BATTERY"; }
+    if (d.battery != null){ gauge($("#gBat"), d.battery, null, !d.plugged); $("#batLbl").textContent = d.plugged ? "POWER · AC" : "BATTERY"; }
     else gauge($("#gBat"), 100, "AC");
     const model = (d.brain||"—").replace("gemini:","GEMINI · ").replace("ollama:","LOCAL · ").toUpperCase();
     $("#kModel").textContent = (d.brain||"—").split(":").pop().toUpperCase(); $("#kModel").title = d.brain||""; $("#brainPill").textContent = "BRAIN · " + (model.startsWith("LOCAL") ? "LOCAL" : model.startsWith("GEMINI") ? "GEMINI" : model);
